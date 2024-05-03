@@ -26,11 +26,6 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "All fields are required");
     }
 
-    return res.status(200).json (
-        new ApiResponse(201,createdUser, "User registered")
-    )
-})
-/*
     // findone or find any can use
     const existedUser = User.findOne({
         $or : [{username}, {email}]
@@ -80,7 +75,7 @@ const registerUser = asyncHandler(async (req, res) => {
         new ApiResponse(201,createdUser, "User registered")
     )
 
-})*/
+})
 
 export { registerUser }
 
