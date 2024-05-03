@@ -1,7 +1,6 @@
 import mongoose from "mongoose"
 import jwt from "jsonwebtoken"
 import bcrypt from "bcrypt"
-import { ThreeSixty } from "@mui/icons-material"
 
 const userSchema = new mongoose.Schema({
     watchHistory: {
