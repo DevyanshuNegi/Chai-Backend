@@ -1,6 +1,6 @@
 import ApiError from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js"
-// import { User } from "../models/user.models.js"
+import { User } from "../models/user.models.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
@@ -27,12 +27,12 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // findone or find any can use
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or : [{username}, {email}]
     })
 
     if(existedUser) {
-        throw new ApiError(409, "Username or email  already existed")
+        throw new ApiError(409, "Username or email  already existed s")
     }
 
     // these new fields in the response come from the multer middleware
@@ -52,13 +52,16 @@ const registerUser = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Avatar file is not uploaded")
     }
 
+    console.log("before sending ", avatar.url, coverImage.url);
+    console.log("before sending ", fullName, email,password, username);
+
     const user = await User.create({
-        fullName,
+        fullName:fullName,
         avatar: avatar.url,
         coverImage: coverImage?.url ||"" ,
         // if coveriamge exist then take its url else ""
-        email,
-        password,
+        email: email,
+        password: password,
         username: username.toLowerCase()
     })
 
