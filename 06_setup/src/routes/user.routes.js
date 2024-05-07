@@ -1,12 +1,11 @@
 import { Router } from "express";
-import { loginUser, registerUser } from "../controllers/user.controller.js";
+import { loginUser, registerUser, logoutUser, refreshAccessToken  } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
-import { logoutUser } from "../controllers/user.controller.js";
 
 const router = Router()
 
-router.route("/register").post(
+router.route("/register").post( // MW, mainFunction
 
     upload.fields([ // accepts array
         {
@@ -26,12 +25,15 @@ router.route("/login").post(loginUser)
 
 // register method is called
 // this is ther route that will be added after 
-// http://localhost:8000/api/v1/user
+// http://localhost:8000/api/v1/users
 
 
-// secret routes
-router.route("/logout").post(verifyJWT,// this mw will run first and
+// secured routes
+
+router.route("/logout").post(verifyJWT,// this mw will run first and you can add more middlewares , , then fun
     // then the next function inside will run next fun.
     logoutUser)
+
+router.route("/refresh-token").post(refreshAccessToken)
 
 export default router
