@@ -139,12 +139,6 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 
     // if password also correct then gen access and ref token
-<<<<<<< HEAD
-    const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
-    
-    const loggedInUser = User.findById(user._id). // you can update also without 
-    select("-password -refreshToken")
-=======
     const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(user._id)
 
     const loggedInUser = await User.findById(user._id). // you can update also without 
@@ -152,7 +146,6 @@ const loginUser = asyncHandler(async (req, res) => {
 
     console.log("This is the logged in user")
     console.log(loggedInUser)
->>>>>>> b7fa6254bd91b17ac17e517100ee6bfe2471e4e4
     // now them to cookies
 
 
@@ -161,51 +154,6 @@ const loginUser = asyncHandler(async (req, res) => {
         secure: true
     }
 
-<<<<<<< HEAD
-    // return res
-    // .status(200)
-    // .cookie("accessToken", accessToken, options)
-    // .cookie("refreshToken", refreshToken, options)
-    // .json(
-    //     new ApiResponse(
-    //         200,
-    //         {
-    //             user: loggedInUser, 
-    //             accessToken,
-    //             refreshToken
-    //         },
-    //         "User logged in successfully"
-    //     )
-    // )
-    console.log(" these are access and refresh token");
-console.log(accessToken)
-console.log(refreshToken)
-
-    // res.cookie("accessToken", accessToken, options);
-    // res.cookie("refreshToken", refreshToken, options);
-
-    // return res.status(200).json({
-    //     user: loggedInUser,
-    //     accessToken,
-    //     refreshToken,
-    //     message: "User logged in successfully"
-    // });
-
-    console.log(req)
-    console.log(res)
-    
-    res.status(200)
-        .cookie("accessToken", accessToken, options)
-        .cookie("refreshToken", refreshToken, options)
-        (
-            new ApiResponse(
-                200,
-                {
-                    user: loggedInUser, accessToken, refreshToken
-                },
-                "User logged In Successfully"
-            )
-=======
 
     return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(
         new ApiResponse(
@@ -214,7 +162,6 @@ console.log(refreshToken)
                 user: loggedInUser, accessToken, refreshToken
             },
             "User logged In Successfully"
->>>>>>> b7fa6254bd91b17ac17e517100ee6bfe2471e4e4
         )
     )
 })
@@ -290,36 +237,72 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     }
 })
 
+const chnageCurrentPassword = asyncHandler(async(req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    const user = await User.findById(req.user?._id)
+    user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect) {
+        throw new ApiError(400, "Invalid old password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave: false}) // because only one field is chagned
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Password changed Successfully"))
+
+})
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "Currect user fetched successfully")
+})
+
+const updateAccountDetails = asyncHandler(async(req, res)=> {
+    const {fullName, email} = req.body
+
+    if (!fullName || !email) {
+        throw new ApiError(400, "All fields are required")
+
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set: {
+                fullName: fullName,
+                email : email,
+
+            }
+        },
+        {new: true} // this will reutrn updated value
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Account details updated successfully"))
+
+})
+
+// when there is some chagne in files , 
+// It is good to do it in different controller
+
+// const updateUserAvatar = asyncHandler(async(req, res) => {
+
+//     req.files
+
+// })
 
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    chnageCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails
 }
-
-
-/*
-get username and password
-find the username in db
-get password from db
-match the password and compare
-if password correct
-generate access and refresh token
-send cookies
-*/
-
-
-/*
-get info 
-validation = not empty
-check if already exist: username and email
-check for images then upload to cloudinary
-take response form cloudinary
-create user object - create entry in db
-remove password ad refresh token field from resopnse
-
-push to db
-check if created
-send response
- */
