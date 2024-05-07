@@ -130,20 +130,16 @@ const loginUser = asyncHandler(async (req, res) => {
     // so user defined methods should be applied only on
     // "user" which is what we get from the db response
 
-    console.log(user);
     const isPasswordValid = await user.isPasswordCorrect(password) // this pass is from frontend
     if (!isPasswordValid) {
         throw new ApiError(401, "Password incorrect")
     }
-    console.log("Password validated")
 
     // if password also correct then gen access and ref token
     const {accessToken, refreshToken} = await generateAccessAndRefreshTokens(user._id)
     
     const loggedInUser = User.findById(user._id). // you can update also without 
     select("-password -refreshToken")
-    console.log("This is the logged in user")
-    console.log(loggedInUser)
     // now them to cookies
  
     
@@ -167,11 +163,27 @@ const loginUser = asyncHandler(async (req, res) => {
     //         "User logged in successfully"
     //     )
     // )
-    return res
-        .status(200)
+    console.log(" these are access and refresh token");
+console.log(accessToken)
+console.log(refreshToken)
+
+    // res.cookie("accessToken", accessToken, options);
+    // res.cookie("refreshToken", refreshToken, options);
+
+    // return res.status(200).json({
+    //     user: loggedInUser,
+    //     accessToken,
+    //     refreshToken,
+    //     message: "User logged in successfully"
+    // });
+
+    console.log(req)
+    console.log(res)
+    
+    res.status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
-        .json(
+        (
             new ApiResponse(
                 200,
                 {
