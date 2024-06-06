@@ -111,8 +111,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
 
 const loginUser = asyncHandler(async (req, res) => {
-    const {username, email, password} = req.body;
-    console.log(username, email , password);
+    const { username, email, password } = req.body;
+    console.log(username, email, password);
 
     if (!username && !email) {
         throw new ApiError(401, "Username or emial is required")
@@ -155,15 +155,19 @@ const loginUser = asyncHandler(async (req, res) => {
     }
 
 
-    return res.status(200).cookie("accessToken", accessToken, options).cookie("refreshToken", refreshToken, options).json(
-        new ApiResponse(
-            200,
-            {
-                user: loggedInUser, accessToken, refreshToken
-            },
-            "User logged In Successfully"
+    return res
+        .status(200)
+        .cookie("accessToken", accessToken, options)
+        .cookie("refreshToken", refreshToken, options)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user: loggedInUser, accessToken, refreshToken
+                },
+                "User logged In Successfully"
+            )
         )
-    )
 })
 
 const logoutUser = asyncHandler(async (req, res) => {
@@ -198,74 +202,74 @@ const logoutUser = asyncHandler(async (req, res) => {
 const refreshAccessToken = asyncHandler(async (req, res) => {
     try {
         const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshAccessToken
-    
-        if (incomingRefreshToken){
+
+        if (!incomingRefreshToken) {
             throw new ApiError(401, "unauthorized requiest");
         }
-    
+
         const decodedToken = jwt.verify(
             incomingRefreshToken,
             process.env.REFRESH_TOKEN_SECRET
         )
-    
+
         const user = await User.findById(decodedToken?._id)
-        if(!user) {
+        if (!user) {
             throw new ApiError(401, "Invalid refresh token")
         }
-    
+
         if (incomingRefreshToken !== user?.refreshToken) {
             throw new ApiError(401, "refresh token is expired or used ")
         }
-        
+
         const options = {
-            httpOnly: true, 
+            httpOnly: true,
             secure: ture
         }
-        const {accessToken, newRefreshToken} = await generateAccessAndRefreshTokens(user._id)
-    
+        const { accessToken, newRefreshToken } = await generateAccessAndRefreshTokens(user._id)
+
         return res
-        .status(200)
-        .cookie("accessToken", accessToken)
-        .cookie("refreshToken", newRefreshToken)
-        .json(
-            new ApiResponse(
-                200,
-                {accessToken, refreshToken: newRefreshToken},
-                "Access token refreshed"
+            .status(200)
+            .cookie("accessToken", accessToken)
+            .cookie("refreshToken", newRefreshToken)
+            .json(
+                new ApiResponse(
+                    200,
+                    { accessToken, refreshToken: newRefreshToken },
+                    "Access token refreshed"
+                )
             )
-        )
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid refresh token");
     }
 })
 
-const chnageCurrentPassword = asyncHandler(async(req, res) => {
-    const {oldPassword, newPassword} = req.body
+const changeCurrentPassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body
 
     const user = await User.findById(req.user?._id)
-    user.isPasswordCorrect(oldPassword)
+    const passCorrect = user.isPasswordCorrect(oldPassword)
 
-    if(!isPasswordCorrect) {
+    if (!isPasswordCorrect) {
         throw new ApiError(400, "Invalid old password")
     }
 
     user.password = newPassword
-    await user.save({validateBeforeSave: false}) // because only one field is chagned
+    await user.save({ validateBeforeSave: false }) // because only one field is chagned
 
     return res
-    .status(200)
-    .json(new ApiResponse(200, {}, "Password changed Successfully"))
+        .status(200)
+        .json(new ApiResponse(200, {}, "Password changed Successfully"))
 
 })
 
-const getCurrentUser = asyncHandler(async(req, res) => {
+const getCurrentUser = asyncHandler(async (req, res) => {
     return res
-    .status(200)
-    .json(200, req.user, "Currect user fetched successfully")
+        .status(200)
+        .json(200, req.user, "Currect user fetched successfully")
 })
 
-const updateAccountDetails = asyncHandler(async(req, res)=> {
-    const {fullName, email} = req.body
+const updateAccountDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body
 
     if (!fullName || !email) {
         throw new ApiError(400, "All fields are required")
@@ -277,16 +281,16 @@ const updateAccountDetails = asyncHandler(async(req, res)=> {
         {
             $set: {
                 fullName: fullName,
-                email : email,
+                email: email,
 
             }
         },
-        {new: true} // this will reutrn updated value
+        { new: true } // this will reutrn updated value
     ).select("-password")
 
     return res
-    .status(200)
-    .json(new ApiResponse(200, user, "Account details updated successfully"))
+        .status(200)
+        .json(new ApiResponse(200, user, "Account details updated successfully"))
 
 })
 
@@ -299,12 +303,89 @@ const updateAccountDetails = asyncHandler(async(req, res)=> {
 
 // })
 
+
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { username } = req.params;
+
+    if (!username?.trim()) {
+        throw new ApiError(400, "Username is missing")
+    }
+
+    // aggregation pipeline 
+    const channel = await User.aggregate([
+        {
+            $match: {
+                username: username?.toLowerCase() // ? is for better safety
+            }
+        },
+        {
+            $lookup: { // adding channel
+                from: "subscriptions", // here the name of actual doc will pass
+                localField: "_id",
+                foreignField: "channel",
+                as: "subscribers"
+
+            }
+        },
+        {
+            $lookup: { // adding subs
+                from: "subscriptions", // here the name of actual doc will pass
+                localField: "_id",
+                foreignField: "subscriber",
+                as: "subscribedTo"
+            }
+        },
+        {
+            $addFields: {
+                subscribersCount: {
+                    $size: "$subscribers"
+                },
+                channelsSbuscribedToCount: {
+                    $size: "$subscribedTo"
+                },
+                isSubscribed: { // conditional for is subs
+                    $cond: {
+                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        then: true,
+                        else: false
+                    }
+                }
+            }
+        },
+        {
+            $project: { // what you want to pass : 1
+                fullName: 1,
+                username: 1,
+                subscribersCount: 1,
+                channelsSbuscribedToCount: 1,
+                isSubscribed: 1,
+                email: 1,
+                avatar: 1,
+                coverImage: 1,
+                createdAt: 1
+            }
+        }
+    ])
+
+    if(!channel?.length) {
+        throw new ApiError(404, "channel does not exists");
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(200, channel[0], "User channel fetched successfully")
+    )
+})
+
+// *** cosole log to see what value does it return array or list ... oor google it
+
 export {
     registerUser,
     loginUser,
     logoutUser,
     refreshAccessToken,
-    chnageCurrentPassword,
+    changeCurrentPassword,
     getCurrentUser,
     updateAccountDetails
 }
