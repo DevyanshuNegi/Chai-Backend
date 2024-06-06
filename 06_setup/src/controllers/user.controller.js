@@ -345,7 +345,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
                 },
                 isSubscribed: { // conditional for is subs
                     $cond: {
-                        if: {$in: [req.user?._id, "$subscribers.subscriber"]},
+                        if: { $in: [req.user?._id, "$subscribers.subscriber"] },
                         then: true,
                         else: false
                     }
@@ -367,18 +367,77 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         }
     ])
 
-    if(!channel?.length) {
+    if (!channel?.length) {
         throw new ApiError(404, "channel does not exists");
     }
 
     return res
-    .status(200)
-    .json(
-        new ApiResponse(200, channel[0], "User channel fetched successfully")
-    )
+        .status(200)
+        .json(
+            new ApiResponse(200, channel[0], "User channel fetched successfully")
+        )
 })
 
 // *** cosole log to see what value does it return array or list ... oor google it
+
+
+const getWatchHistory = asyncHandler(async (req, res) => {
+    // NOTE:
+    // when using mongoose you deal with id as a string but in this case there is no mongoose
+    // so we will use the ID object
+
+    const user = await User.aggregate([
+        {
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        { // remember it return array
+            $lookup: { // for getting history
+                from: "videos",
+                localField: "watchHistory",
+                foreignField: "_id",
+                as: "watchHistory",
+                pipeline: [ // to get user info from id
+                    {
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "owner",
+                            pipeline: [ // to remove extra info
+                                {
+                                    $project: {
+                                        fullName: 1,
+                                        username: 1,
+                                        avatar: 1,
+
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                owner: {// same name so it overrides the old one
+                    $first: "$owner"
+                }
+            }
+        }
+
+    ])
+
+    return res
+    .status(200)
+    .json(new ApiResponse(
+        200,
+        user[0].watchHistory,
+        "Watch history fetched successfully"
+    ))
+})
 
 export {
     registerUser,
@@ -387,5 +446,7 @@ export {
     refreshAccessToken,
     changeCurrentPassword,
     getCurrentUser,
-    updateAccountDetails
+    updateAccountDetails,
+    getWatchHistory,
+    getUserChannelProfile
 }
