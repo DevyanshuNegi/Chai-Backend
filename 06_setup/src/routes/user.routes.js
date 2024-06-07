@@ -27,7 +27,6 @@ router.route("/login").post(loginUser)
 // this is ther route that will be added after 
 // http://localhost:8000/api/v1/users
 
-
 // secured routes
 
 router.route("/logout").post(verifyJWT,// this mw will run first and you can add more middlewares , , then fun
